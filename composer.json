@@ -1,0 +1,19 @@
+{
+    "name": "lshorz/laravel-ueditor",
+    "description": "UEditor integration for Laravel.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Marven Liao",
+            "email": "lshzhuhai@163.com"
+        }
+    ],
+    "autoload": {
+        "psr-4":{
+            "Lshorz\\LaravelUEditor\\":"src/"
+        }
+    },
+    "require-dev": {
+        "fabpot/php-cs-fixer": "^1.10"
+    }
+}
