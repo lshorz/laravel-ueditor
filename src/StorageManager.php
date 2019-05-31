@@ -159,13 +159,13 @@ class StorageManager
     protected function fileHasError(UploadedFile $file, array $config)
     {
         $error = false;
-
+        $ext = $file->getClientOriginalExtension() ?? $file->guessClientExtension();
         if (!$file->isValid()) {
             $error = $file->getError();
         } elseif ($file->getSize() > $config['max_size']) {
             $error = 'upload.ERROR_SIZE_EXCEED';
         } elseif (!empty($config['allow_files']) &&
-            !in_array('.'.$file->guessExtension(), $config['allow_files'])) {
+            !in_array('.'.$ext, $config['allow_files'])) {
             $error = 'upload.ERROR_TYPE_NOT_ALLOWED';
         }
 
