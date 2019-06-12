@@ -2,7 +2,9 @@
 
 /*
  * This file is part of the overtrue/laravel-ueditor.
+ *
  * (c) overtrue <i@overtrue.me>
+ *
  * This source file is subject to the MIT license that is bundled
  * with this source code in the file LICENSE.
  */
@@ -12,8 +14,9 @@ namespace Lshorz\LaravelUEditor;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Overtrue\LaravelUEditor\Events\Uploaded;
-use Overtrue\LaravelUEditor\Events\Uploading;
+use Lshorz\LaravelUEditor\Events\Uploaded;
+use Lshorz\LaravelUEditor\Events\Uploading;
+use Lshorz\LaravelUEditor\Events\Catched;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -85,6 +88,94 @@ class StorageManager
     }
 
     /**
+     * Fetch a file.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function fetch(Request $request)
+    {
+        $config = $this->getUploadConfig($request->get('action'));
+        $urls = $request->get($config['field_name']);
+        if (count($urls) === 0) {
+            return $this->error('UPLOAD_ERR_NO_FILE');
+        }
+        $urls = array_unique($urls);
+        
+        $list = array();
+        foreach ($urls as $key => $url) {
+            $img = $this->download($url, $config);
+            $item = [];
+            if ($img['state'] === 'SUCCESS') {
+                $file = $img['file'];
+                $filename = $img['filename'];
+                $this->storeContent($file, $filename);
+                if ($this->eventSupport()) {
+                    unset($img['file']);
+                    event(new Catched($img));
+                }
+            }
+            unset($img['file']);
+            array_push($list, $img);
+        }
+
+        $response = [
+            'state'=> count($list) ? 'SUCCESS':'ERROR',
+            'list'=> $list
+        ];
+
+        return response()->json($response);
+    }
+
+    /**
+     * Download a file.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return Array $info
+     */
+    private function download($url, $config)
+    {
+        if (strpos($url, 'http') !== 0) {
+            return $this->error('ERROR_HTTP_LINK');
+        }
+        $pathRes = parse_url($url);
+        $img = new \SplFileInfo($pathRes['path']);
+        $original = $img->getFilename();
+        $ext = $img->getExtension();
+        $title = config('ueditor.hash_filename') ? md5($original) . '.' . $ext : $original;
+        $filename = $this->formatPath($config['path_format'], $title);
+        $info = [
+            'state' => 'SUCCESS',
+            'url' => $this->getUrl($filename),
+            'title' => $title,
+            'original' => $original,
+            'source' => $url,
+            'size' => 0,
+            'file' => '',
+            'filename' => $filename,
+        ];
+
+        $context = stream_context_create(
+            array('http' => array(
+                'follow_location' => false, // don't follow redirects
+            ))
+        );
+        $file = fopen($url, 'r', false, $context);
+        if ($file === false) {
+            $info['state'] = 'ERROR';
+            return $info;
+        }
+        $content = stream_get_contents($file);
+        fclose($file);
+        
+        $info['file'] = $content;
+        $info['siez'] = strlen($content);
+        return $info;
+    }
+
+    /**
      * @return bool
      */
     public function eventSupport()
@@ -105,7 +196,6 @@ class StorageManager
     public function listFiles($path, $start, $size = 20, array $allowFiles = [])
     {
         $allFiles = $this->disk->listContents($path, true);
-
         $files = $this->paginateFiles($allFiles, $start, $size);
 
         return [
@@ -146,6 +236,19 @@ class StorageManager
     protected function store(UploadedFile $file, $filename)
     {
         return $this->disk->put($filename, fopen($file->getPathname(), 'r+'));
+    }
+
+    /**
+     * Store file from content.
+     *
+     * @param string
+     * @param string                                              $filename
+     *
+     * @return mixed
+     */
+    protected function storeContent($content, $filename)
+    {
+        return $this->disk->put($filename, $content);
     }
 
     /**
@@ -216,6 +319,7 @@ class StorageManager
                     'allow_files' => array_get($upload, $prefix.'AllowFiles', []),
                     'path_format' => array_get($upload, $prefix.'PathFormat'),
                 ];
+
                 break;
             }
         }
