@@ -9,9 +9,9 @@
 
 namespace Lshorz\LaravelUEditor;
 
-use Illuminate\Support\Str;
 use League\Flysystem\Adapter\Local as LocalAdapter;
 use League\Flysystem\AwsS3v3\AwsS3Adapter;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -26,11 +26,9 @@ trait UrlResolverTrait
      */
     public function getUrl($filename)
     {
-        /*
         if (method_exists($this->disk, 'url')) {
             return $this->disk->url($filename);
         }
-        */
 
         return $this->url($filename);
     }

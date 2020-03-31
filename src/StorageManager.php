@@ -11,13 +11,14 @@
 
 namespace Lshorz\LaravelUEditor;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Lshorz\LaravelUEditor\Events\Uploaded;
 use Lshorz\LaravelUEditor\Events\Uploading;
 use Lshorz\LaravelUEditor\Events\Catched;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -103,7 +104,7 @@ class StorageManager
             return $this->error('UPLOAD_ERR_NO_FILE');
         }
         $urls = array_unique($urls);
-        
+
         $list = array();
         foreach ($urls as $key => $url) {
             $img = $this->download($url, $config);
@@ -170,7 +171,7 @@ class StorageManager
         }
         $content = stream_get_contents($file);
         fclose($file);
-        
+
         $info['file'] = $content;
         $info['siez'] = strlen($content);
         return $info;
@@ -360,8 +361,8 @@ class StorageManager
             $path = preg_replace('/\{rand\:[\d]*\}/i', str_pad(mt_rand(0, pow(10, $length) - 1), $length, '0', STR_PAD_LEFT), $path);
         }
 
-        if (!str_contains($path, $filename)) {
-            $path = str_finish($path, '/').$filename;
+        if (!Str::contains($path, $filename)) {
+            $path = Str::finish($path, '/').$filename;
         }
 
         return $path;
